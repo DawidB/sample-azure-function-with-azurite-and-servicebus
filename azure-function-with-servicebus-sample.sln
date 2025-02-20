@@ -4,6 +4,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExternalFunction", "Externa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InternalFunction", "InternalFunction\InternalFunction.csproj", "{B81A05D7-1958-4C5C-A862-F8CED1759573}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0B97F023-9896-467D-91AE-A32C696467AC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IntegrationTests", "tests\IntegrationTests\IntegrationTests.csproj", "{30FCDF5D-A3E6-445E-8736-2772ED61D846}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +22,12 @@ Global
 		{B81A05D7-1958-4C5C-A862-F8CED1759573}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B81A05D7-1958-4C5C-A862-F8CED1759573}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B81A05D7-1958-4C5C-A862-F8CED1759573}.Release|Any CPU.Build.0 = Release|Any CPU
+		{30FCDF5D-A3E6-445E-8736-2772ED61D846}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30FCDF5D-A3E6-445E-8736-2772ED61D846}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30FCDF5D-A3E6-445E-8736-2772ED61D846}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30FCDF5D-A3E6-445E-8736-2772ED61D846}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{30FCDF5D-A3E6-445E-8736-2772ED61D846} = {0B97F023-9896-467D-91AE-A32C696467AC}
 	EndGlobalSection
 EndGlobal
