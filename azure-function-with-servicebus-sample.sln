@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExternalFunction", "ExternalFunction\ExternalFunction.csproj", "{3B395720-22F1-4A8E-8DEF-D5B9FD61BC1F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InternalFunction", "InternalFunction\InternalFunction.csproj", "{B81A05D7-1958-4C5C-A862-F8CED1759573}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3B395720-22F1-4A8E-8DEF-D5B9FD61BC1F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B395720-22F1-4A8E-8DEF-D5B9FD61BC1F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B395720-22F1-4A8E-8DEF-D5B9FD61BC1F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B395720-22F1-4A8E-8DEF-D5B9FD61BC1F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B81A05D7-1958-4C5C-A862-F8CED1759573}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B81A05D7-1958-4C5C-A862-F8CED1759573}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B81A05D7-1958-4C5C-A862-F8CED1759573}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B81A05D7-1958-4C5C-A862-F8CED1759573}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
