@@ -1,5 +1,9 @@
 ﻿using Azure.Messaging.ServiceBus;
+using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Containers;
+using DotNet.Testcontainers.Images;
 using DotNet.Testcontainers.Networks;
+using FluentAssertions;
 using Microsoft.Extensions.Hosting;
 using Testcontainers.Azurite;
 using Testcontainers.MsSql;
@@ -16,16 +20,16 @@ public class IntegrationTests : IAsyncLifetime
     private readonly MsSqlContainer _msSqlContainer;
     private readonly ServiceBusContainer _serviceBusContainer;
 
-    private readonly IHost _functionsHost;
+    private readonly IContainer _ordersFunctionContainer;
 
     public static string DatabaseNetworkAlias => ServiceBusBuilder.DatabaseNetworkAlias;
     
     public IntegrationTests()
     {
         // Create a custom network
-        // _network = new NetworkBuilder()
-        //     .WithName("az-function-with-sb-network")
-        //     .Build();
+        _network = new NetworkBuilder()
+            .WithName("az-function-with-sb-network")
+            .Build();
         //
         // // Configure Azurite container for Azure Storage
         // //https://mcr.microsoft.com/en-us/artifact/mar/azure-storage/azurite/tags
@@ -60,6 +64,19 @@ public class IntegrationTests : IAsyncLifetime
         //     //.WithNetwork(_network)
         //     //.WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(5672))
         //     .Build();
+        
+        // _ordersFunctionContainer = new ImageFromDockerfileBuilder()
+        //     .WithDockerfileDirectory(CommonDirectoryPath.GetSolutionDirectory(), "src/ExternalFunctions")
+        //     .WithDockerfile("Dockerfile")
+        //     .Build();
+        // await _ordersFunctionContainer.CreateAsync().ConfigureAwait(false);
+        //
+        _ordersFunctionContainer = new ContainerBuilder()
+            .WithImage("az-func-with-sb-external")
+            .WithNetwork(_network)
+            .WithPortBinding(8080, 80)
+            .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(80))
+            .Build();
         
         // var loggerMock = NSubstitute.Substitute.For<ILogger<QueueOrderFunction>>();
         // Environment.SetEnvironmentVariable("FUNCTIONS_WORKER_ID", Guid.NewGuid().ToString());
@@ -127,10 +144,12 @@ public class IntegrationTests : IAsyncLifetime
         
         // Initialize any additional setup like creating the blob container or Service Bus queue.
         // await _functionsHost.StartAsync();
+        await _ordersFunctionContainer.StartAsync();
     }
 
     public async Task DisposeAsync()
     {
+        await _ordersFunctionContainer.DisposeAsync();
         // await _functionsHost.StopAsync();
         // _functionsHost.Dispose();
         //
@@ -140,16 +159,30 @@ public class IntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task HttpGetRequest_GivenHealthCheckEndpoint_FunctionReturnsOk()
+    {
+        // Arrange
+        using var httpClient = new HttpClient();
+        var function1Url = "http://localhost:8080/api/HealthCheck";
+
+        // Act
+        var response = await httpClient.GetAsync(function1Url);
+        
+        // Assert
+        response.IsSuccessStatusCode.Should().BeTrue();
+    }
+    
+    [Fact]
     public async Task FullFlowIntegrationTest()
     {
         // Arrange
         using var httpClient = new HttpClient();
-        var function1Url = "http://127.0.0.1:7208/api/HealthCheck";
+        var function1Url = "http://localhost:8080/api/HealthCheck";
         var serviceBusConnectionString = "Endpoint=sb://localhost:5672/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=your_key_here";
         var queueName = "myqueue";
 
         // Act
-        var response = await httpClient.PostAsync(function1Url, null);
+        var response = await httpClient.GetAsync(function1Url);
         response.EnsureSuccessStatusCode();
 
         // Wait for the message to be processed
