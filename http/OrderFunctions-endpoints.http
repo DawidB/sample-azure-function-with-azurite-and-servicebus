@@ -1,0 +1,16 @@
+### POST request to queue new order
+POST http://localhost:{{port}}/api/SendOrder
+    ?generated-in=JetBrains Rider
+Content-Type: application/json
+
+{
+  "DocumentType": "order",
+  "Id": "{{$random.uuid}}",
+  "OrderedItemCount": {{$random.integer()}},
+  "Timestamp": "{{$isoTimestamp}}"
+}
+
+###GET request to check order status
+GET http://localhost:{{port}}/api/CheckOrderStatus
+    ?generated-in=JetBrains Rider
+    &id=bc16a1a3-21d2-4006-baff-8d1c7591aa93

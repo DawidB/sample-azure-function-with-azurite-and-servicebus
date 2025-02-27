@@ -1,0 +1,15 @@
+### GET request to Health Check endpoint
+GET http://localhost:{{port}}/api/HealthCheck
+    ?generated-in=JetBrains Rider
+
+### GET request to PeekMessageCount endpoint showing the number of messages in the queue
+GET http://localhost:{{port}}/api/PeekMessageCount
+    ?generated-in=JetBrains Rider
+
+### POST request to SendMessage endpoint to enqueue a message
+POST http://localhost:{{port}}/api/SendMessage
+    ?generated-in=JetBrains Rider
+
+### POST request to ReceiveMessage endpoint to dequeue a message
+POST http://localhost:{{port}}/api/ReceiveMessage
+    ?generated-in=JetBrains Rider
