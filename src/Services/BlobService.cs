@@ -2,7 +2,6 @@
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Core;
 using Microsoft.Extensions.Logging;
 
 namespace Services;

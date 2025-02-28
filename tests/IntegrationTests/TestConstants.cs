@@ -1,4 +1,4 @@
-public static class Constants
+public static class TestConstants
 {
     public const string CollectionDefinitionName = "IntegrationTestsCollection";
 }

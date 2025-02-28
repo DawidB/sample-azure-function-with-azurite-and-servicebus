@@ -1,29 +1,20 @@
 using System.Text;
 using System.Text.Json;
-using Azure.Messaging.ServiceBus;
-using Azure.Storage.Blobs;
 using Core;
 using Core.Models;
 using FluentAssertions;
 
-namespace IntegrationTests;
+namespace IntegrationTests.Tests;
 
-[Collection(Constants.CollectionDefinitionName)]
-public class InternalFunctionTests : IClassFixture<TestFixture>
+[Collection(TestConstants.CollectionDefinitionName)]
+public class InternalFunctionTests(TestFixture fixture)
 {
-    private readonly TestFixture _fixture;
-
-    public InternalFunctionTests(TestFixture fixture)
-    {
-        _fixture = fixture;
-    }
-
     [Fact]
     public async Task ProcessBlobMessage_GivenValidOrder_ProcessesAndStoresResult()
     {
         // Arrange
         using var httpClient = new HttpClient();
-        var functionUrl = $"{_fixture.ExternalFunctionUrl}/SendOrder";
+        var functionUrl = $"{fixture.ExternalFunctionUrl}/SendOrder";
         var orderDto = new DocumentDto
         {
             Id = Guid.NewGuid(),
@@ -36,85 +27,28 @@ public class InternalFunctionTests : IClassFixture<TestFixture>
         // Act
         HttpResponseMessage response = await httpClient.PostAsync(functionUrl, content);
         response.EnsureSuccessStatusCode();
-        
-        // Upload test blob
-        // await UploadBlobAsync(Constants.InputBlobContainerName, blobName, orderDto);
-        
-        // Send message to Service Bus
-        // await SendMessageAsync(blobName);
-
-        // Act - wait for processing
-        await Task.Delay(TimeSpan.FromSeconds(5)); // Allow time for processing
+        await Task.Delay(TimeSpan.FromSeconds(1)); // Allow time for processing
+        var processedOrder = await fixture.DownloadBlobAsync<DocumentDto>(Constants.OutputBlobContainerName, orderDto.ToOutputBlobName());
 
         // Assert
-        var outputBlobName = orderDto.ToOutputBlobName();
-        var processedOrder = await DownloadBlobAsync<DocumentDto>(Constants.OutputBlobContainerName, outputBlobName);
-        
         processedOrder.Should().NotBeNull();
-        processedOrder!.Id.Should().Be(orderDto.Id);
+        processedOrder.Id.Should().Be(orderDto.Id);
         processedOrder.Status.Should().Be("ready");
-        processedOrder.AvailableItemCount.Should().BeInRange(1, 100);
+        processedOrder.AvailableItemCount.Should().BeGreaterThan(1);
     }
 
     [Fact]
     public async Task ProcessBlobMessage_GivenNonExistentBlob_NoOutputBlobCreated()
     {
         // Arrange
-        string nonExistentBlobName = $"nonexistent-{Guid.NewGuid()}.json";
+        var nonExistentBlobName = $"nonexistent-{Guid.NewGuid()}.json";
         
         // Act
-        await SendMessageAsync(nonExistentBlobName);
-        await Task.Delay(TimeSpan.FromSeconds(5)); // Allow time for processing
+        await fixture.SendMessageAsync(nonExistentBlobName);
+        await Task.Delay(TimeSpan.FromSeconds(1)); // Allow time for processing
+        bool outputBlobExists = await fixture.BlobExistsAsync(Constants.OutputBlobContainerName, nonExistentBlobName.Replace("nonexistent", "output"));
 
         // Assert
-        var outputBlobExists = await BlobExistsAsync(Constants.OutputBlobContainerName, 
-            nonExistentBlobName.Replace("nonexistent", "output"));
         outputBlobExists.Should().BeFalse();
-    }
-
-    private async Task SendMessageAsync(string message)
-    {
-        var serviceBusConnectionString = _fixture.ServiceBusContainer.GetConnectionString();
-        await using var client = new ServiceBusClient(serviceBusConnectionString);
-        var sender = client.CreateSender(Constants.DefaultQueueName);
-        await sender.SendMessageAsync(new ServiceBusMessage(message));
-    }
-
-    private async Task UploadBlobAsync<T>(string containerName, string blobName, T content)
-    {
-        var cs = _fixture.AzuriteContainer.GetConnectionString();
-        var blobServiceClient = new BlobServiceClient(cs);
-        var containerClient = blobServiceClient.GetBlobContainerClient(containerName);
-        var blobClient = containerClient.GetBlobClient(blobName);
-        
-        var json = JsonSerializer.Serialize(content);
-        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-        await blobClient.UploadAsync(stream, true);
-    }
-
-    private async Task<T?> DownloadBlobAsync<T>(string containerName, string blobName)
-    {
-        var cs = _fixture.AzuriteContainer.GetConnectionString();
-        var blobServiceClient = new BlobServiceClient(cs);
-        var containerClient = blobServiceClient.GetBlobContainerClient(containerName);
-        var blobClient = containerClient.GetBlobClient(blobName);
-
-        if (!await blobClient.ExistsAsync())
-        {
-            return default;
-        }
-
-        var response = await blobClient.DownloadContentAsync();
-        return JsonSerializer.Deserialize<T>(response.Value.Content);
-    }
-
-    private async Task<bool> BlobExistsAsync(string containerName, string blobName)
-    {
-        var cs = _fixture.AzuriteContainer.GetConnectionString();
-        var blobServiceClient = new BlobServiceClient(cs);
-        var containerClient = blobServiceClient.GetBlobContainerClient(containerName);
-        var blobClient = containerClient.GetBlobClient(blobName);
-        var blobExists = await blobClient.ExistsAsync();
-        return blobExists.Value;
     }
 }

@@ -1,29 +1,27 @@
 ﻿using System.Text;
 using System.Text.Json;
 using Azure.Messaging.ServiceBus;
-using Azure.Storage.Blobs;
 using Core;
 using Core.Models;
 using FluentAssertions;
 
-namespace IntegrationTests;
+namespace IntegrationTests.Tests;
 
-[Collection(Constants.CollectionDefinitionName)]
-public class ExternalFunctionTests : IClassFixture<TestFixture>
+[Collection(TestConstants.CollectionDefinitionName)]
+public class ExternalFunctionTests(TestFixture fixture) : IAsyncLifetime
 {
-    private readonly TestFixture _fixture;
+    //were testing the external function in isolation from internal function
+    //(so we can check messages in the queue before internal function processes it)
+    public async Task InitializeAsync() => await fixture.WarehouseFunctionContainer.PauseAsync();
 
-    public ExternalFunctionTests(TestFixture fixture)
-    {
-        _fixture = fixture;
-    }
-
+    public async Task DisposeAsync() => await fixture.WarehouseFunctionContainer.UnpauseAsync();
+    
     [Fact]
     public async Task HealthCheckRequest_WhenRequested_FunctionReturnsOk()
     {
         // Arrange
         using var httpClient = new HttpClient();
-        var functionUrl = $"{_fixture.ExternalFunctionUrl}/HealthCheck";
+        var functionUrl = $"{fixture.ExternalFunctionUrl}/HealthCheck";
 
         // Act
         HttpResponseMessage response = await httpClient.GetAsync(functionUrl);
@@ -36,9 +34,8 @@ public class ExternalFunctionTests : IClassFixture<TestFixture>
     public async Task SendOrderRequest_GivenNewOrder_FunctionIngestsOrder()
     {
         // Arrange
-        await _fixture.WarehouseFunctionContainer.StopAsync(); // Stops the function to prevent it from processing the order
         using var httpClient = new HttpClient();
-        var functionUrl = $"{_fixture.ExternalFunctionUrl}/SendOrder";
+        var functionUrl = $"{fixture.ExternalFunctionUrl}/SendOrder";
         var orderDto = new DocumentDto
         {
             Id = Guid.NewGuid(),
@@ -54,28 +51,9 @@ public class ExternalFunctionTests : IClassFixture<TestFixture>
 
         // Assert
         response.IsSuccessStatusCode.Should().BeTrue();
-        (await BlobExistsAsync(orderDto.ToInputBlobName())).Should().BeTrue();
+        (await fixture.BlobExistsAsync(Constants.InputBlobContainerName, orderDto.ToInputBlobName())).Should().BeTrue();
         
-        IReadOnlyList<ServiceBusReceivedMessage> messages = await PeekMessagesAsync();
-        messages.Any(m => m.Body.ToString().Contains(orderDto.Id.ToString())).Should().BeTrue();        
-    }
-
-    private async Task<bool> BlobExistsAsync(string blobName)
-    {
-        var cs = _fixture.AzuriteContainer.GetConnectionString();
-        var blobServiceClient = new BlobServiceClient(cs);
-        var containerClient = blobServiceClient.GetBlobContainerClient(Constants.InputBlobContainerName);
-        var blobClient = containerClient.GetBlobClient(blobName);
-        var blobExists = await blobClient.ExistsAsync();
-        return blobExists.Value;
-    }
-
-    private async Task<IReadOnlyList<ServiceBusReceivedMessage>> PeekMessagesAsync()
-    {
-        var serviceBusConnectionString = _fixture.ServiceBusContainer.GetConnectionString();
-        await using var client = new ServiceBusClient(serviceBusConnectionString);
-        var receiver = client.CreateReceiver(Constants.DefaultQueueName);
-        var messages = await receiver.PeekMessagesAsync(100);
-        return messages;
+        IReadOnlyList<ServiceBusReceivedMessage> messages = await fixture.PeekMessagesAsync();
+        messages.Any(m => m.Body.ToString().Contains(orderDto.Id.ToString())).Should().BeTrue();
     }
 }
