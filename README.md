@@ -1,6 +1,6 @@
 # Overview
 
-This sample solution demonstrates the implementation of Azure Functions (.NET 9, [isolated worker model](https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide?tabs=hostbuilder%2Cwindows)) with Blob Storage and Service Bus integrations. The project consists of two main functions:
+This sample solution demonstrates the implementation of Azure Functions (.NET 9, [isolated worker model](https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide?tabs=hostbuilder%2Cwindows)) with Blob Storage and Service Bus integrations, including integration tests. The project consists of two main functions:
 
 1. **External Function**: Simulates order taking service and handles incoming HTTP requests and processes orders through the Service Bus queue.
    - Exposes HTTP endpoints for order processing
