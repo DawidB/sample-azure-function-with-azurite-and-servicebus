@@ -9,18 +9,13 @@
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App"/>
         <PackageReference Include="Azure.Storage.Blobs" Version="12.23.0" />
-        <PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
         <!-- Application Insights isn't enabled by default. See https://aka.ms/AAt8mw4. -->
         <!-- <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.22.0" /> -->
         <!-- <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.0.0" /> -->
         <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.0.0"/>
-        <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.0.0"/>
+        <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.0.1" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.22.1" />
-        <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.0"/>
-        <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.41" />
-        <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="5.0.0" />
-        <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.2.0" />
-        <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" Version="5.16.4" />
+        <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.1" />
     </ItemGroup>
     <ItemGroup>
         <None Update="host.json">
