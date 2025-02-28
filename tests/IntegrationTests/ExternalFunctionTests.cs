@@ -49,21 +49,34 @@ public class ExternalFunctionTests : IClassFixture<TestFixture>
         // Act
         HttpResponseMessage response = await httpClient.PostAsync(functionUrl, content);
         response.EnsureSuccessStatusCode();
-        
-        var serviceBusConnectionString = "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;";
-        await using var client = new ServiceBusClient(serviceBusConnectionString);
-        var receiver = client.CreateReceiver("queue.1");
-        var messages = await receiver.PeekMessagesAsync(100);
 
+
+        // Assert
+        response.IsSuccessStatusCode.Should().BeTrue();
+        
+        IReadOnlyList<ServiceBusReceivedMessage> messages = await PeekMessagesAsync();
+        messages.Any(m => m.Body.ToString().Contains(orderDto.Id.ToString())).Should().BeTrue();
+        
+        bool blobExists = await BlobExistsAsync(orderDto.ToInputBlobName());
+        blobExists.Should().BeTrue();
+    }
+
+    private async Task<bool> BlobExistsAsync(string blobName)
+    {
         var cs = _fixture.AzuriteContainer.GetConnectionString();
         var blobServiceClient = new BlobServiceClient(cs);
         var containerClient = blobServiceClient.GetBlobContainerClient(Constants.InputBlobContainerName);
-        var blobClient = containerClient.GetBlobClient(orderDto.ToInputBlobName());
+        var blobClient = containerClient.GetBlobClient(blobName);
         var blobExists = await blobClient.ExistsAsync();
-        
-        // Assert
-        response.IsSuccessStatusCode.Should().BeTrue();
-        messages.Any(m => m.Body.ToString().Contains(orderDto.Id.ToString())).Should().BeTrue();
-        blobExists.Value.Should().BeTrue();
+        return blobExists.Value;
+    }
+
+    private async Task<IReadOnlyList<ServiceBusReceivedMessage>> PeekMessagesAsync()
+    {
+        var serviceBusConnectionString = _fixture.ServiceBusContainer.GetConnectionString();
+        await using var client = new ServiceBusClient(serviceBusConnectionString);
+        var receiver = client.CreateReceiver(Constants.DefaultQueueName);
+        var messages = await receiver.PeekMessagesAsync(100);
+        return messages;
     }
 }

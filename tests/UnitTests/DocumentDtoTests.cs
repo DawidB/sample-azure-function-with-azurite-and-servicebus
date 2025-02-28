@@ -70,7 +70,7 @@ public class DocumentDtoTests
         var orderDto = JsonConvert.DeserializeObject<DocumentDto>(emptyJson);
 
         // Assert
-        Assert.Equal(expectedOrderDto.Id, orderDto.Id);
+        Assert.Equal(expectedOrderDto.Id, orderDto!.Id);
     }
     
     private string CreateSampleOrderJson() => "{\"DocumentType\":\"order\",\"Id\":\"0b474478-76de-40fd-a274-584a59736f34\",\"OrderedItemCount\":244,\"AvailableItemCount\":0,\"Status\":\"new\",\"Timestamp\":\"2025-02-27T10:41:48.962Z\"}";
