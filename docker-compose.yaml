@@ -1,0 +1,29 @@
+services:
+  external-function:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - FunctionDir=ExternalFunction
+    ports:
+      - "8081:80"
+    environment:
+      - VALUES__FUNCTIONS_WORKER_RUNTIME=dotnet-isolated
+      - VALUES__AzureWebJobsStorage="AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;DefaultEndpointsProtocol=http;BlobEndpoint=http://127.0.0.1:11000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:11001/devstoreaccount1;TableEndpoint=http://127.0.0.1:11002/devstoreaccount1;"
+      - VALUES__ServiceBusConnection="Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
+  
+  internal-function:
+    build:
+      context: .
+      dockerfile: Dockerfile 
+      args:
+        - FunctionDir=InternalFunction
+    ports:
+      - "8082:80"
+    environment:
+      - VALUES__FUNCTIONS_WORKER_RUNTIME=dotnet-isolated
+      - VALUES__AzureWebJobsStorage="AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;DefaultEndpointsProtocol=http;BlobEndpoint=http://127.0.0.1:11000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:11001/devstoreaccount1;TableEndpoint=http://127.0.0.1:11002/devstoreaccount1;"
+      - VALUES__ServiceBusConnection="Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
+
+include:
+  - docker-compose-dependencies.yaml
