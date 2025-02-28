@@ -2,7 +2,17 @@
 
 # Dependencies
 
-docker compose -f docker-compose-sb.yaml up -d
+1. Execute the following command to start the dependencies locally:
+
+```bash
+docker compose -f docker-compose-dependencies.yaml up -d
+```
+
+1. Execute the following command to stop the dependencies locally:
+
+```bash
+docker compose -f docker-compose-dependencies.yaml down
+```
 
 # Running the code
 

@@ -1,0 +1,47 @@
+services:
+  servicebus:
+    container_name: "servicebus-emulator"
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+#    volumes:
+#      - "${CONFIG_PATH}:/ServiceBus_Emulator/ConfigFiles/Config.json"
+    networks:
+      sb-emulator:
+        aliases:
+          - "sb-emulator"
+    ports:
+      - "5672:5672"
+    environment:
+      CONFIG_PATH: "./config.json"
+      ACCEPT_EULA: "Y"
+      SQL_SERVER: sqledge
+      MSSQL_SA_PASSWORD: "P@assw0rd"
+    depends_on:
+      - sqledge
+
+  sqledge:
+    container_name: "sqledge"
+    image: "mcr.microsoft.com/azure-sql-edge:latest"
+    networks:
+      sb-emulator:
+        aliases:
+          - "sqledge"
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "P@assw0rd"
+      
+  azurite:
+    image: "mcr.microsoft.com/azure-storage/azurite:3.30.0"
+    networks:
+      sb-emulator:
+        aliases:
+          - "azurite"
+    ports: # Expose the ports for the Azurite services to 1100* ports, so that they don't collide with default Azurite instance in IDE
+      - "11000:10000"   # Blob service
+      - "11001:10001"   # Queue service
+      - "11002:10002"   # Table service
+    command: "azurite-blob --skipApiVersionCheck --blobHost 0.0.0.0 --location /data"
+      
+networks:
+  sb-emulator:

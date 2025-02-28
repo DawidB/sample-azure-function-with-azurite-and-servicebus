@@ -2,7 +2,7 @@
 
 public class DocumentDto
 {
-    public string DocumentType { get; set; } = null!;
+    public string DocumentType { get; set; } = "order";
     public Guid Id { get; set; }
     public int OrderedItemCount { get; set; }
     public int AvailableItemCount { get; set; }

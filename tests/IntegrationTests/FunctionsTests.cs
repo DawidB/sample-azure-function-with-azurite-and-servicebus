@@ -1,4 +1,10 @@
-﻿using Azure.Messaging.ServiceBus;
+﻿using System.Text;
+using System.Text.Json;
+using Azure.Messaging.ServiceBus;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Core;
+using Core.Models;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Images;
@@ -13,71 +19,71 @@ namespace IntegrationTests;
 
 public class IntegrationTests : IAsyncLifetime
 {
+    private const int ExternalFunctionPort = 8081;
+    private string ExternalFunctionUrl => $"http://localhost:{ExternalFunctionPort}/api";
+    
     private readonly INetwork _network;
     
-    // Using the dedicated container classes provided by Testcontainers.Azurite and Testcontainers.ServiceBus
     private readonly AzuriteContainer _azuriteContainer;
     private readonly MsSqlContainer _msSqlContainer;
     private readonly ServiceBusContainer _serviceBusContainer;
 
     private readonly IContainer _ordersFunctionContainer;
-
-    public static string DatabaseNetworkAlias => ServiceBusBuilder.DatabaseNetworkAlias;
     
     public IntegrationTests()
     {
         // Create a custom network
         _network = new NetworkBuilder()
             .WithName("az-function-with-sb-network")
+            .WithReuse(true)
             .Build();
-        //
-        // // Configure Azurite container for Azure Storage
-        // //https://mcr.microsoft.com/en-us/artifact/mar/azure-storage/azurite/tags
-        // _azuriteContainer = new AzuriteBuilder()
-        //     .WithImage("mcr.microsoft.com/azure-storage/azurite:3.33.0") //3.33.0 is from 10/25/2024
-        //     .WithName("qwe_azurite")
-        //     .WithPortBinding(10000, 10000)
-        //     .WithNetwork(_network)
-        //     .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(10000))
-        //     .Build();
-        //
-        // _msSqlContainer = new MsSqlBuilder()
-        //     .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
-        //     .WithName("qwe_mssql")
-        //     .WithPortBinding(1433, 1433)
-        //     .WithNetwork(_network)
-        //     .WithNetworkAliases(DatabaseNetworkAlias)
-        //     .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(1433))
-        //     .Build();
-        //
-        // // For Service Bus, you might use a container if available or a mocked service
-        // //https://mcr.microsoft.com/en-us/artifact/mar/azure-messaging/servicebus-emulator/tags
-        // //https://java.testcontainers.org/modules/azure/#azure-service-bus-emulator
-        // _serviceBusContainer = new ServiceBusBuilder()
-        //     .DependsOn(_msSqlContainer)
-        //     .WithImage("mcr.microsoft.com/azure-messaging/servicebus-emulator:1.0.1") //1.0.1 is from 11/18/2024
-        //     .WithName("qwe_servicebus")
-        //     .WithAcceptLicenseAgreement(true)
-        //     //.withConfig(MountableFile.forClasspathResource("/service-bus-config.json"))
-        //     .WithMsSqlContainer(_network, _msSqlContainer, DatabaseNetworkAlias)
-        //     .WithPortBinding(5672, 5672)
-        //     //.WithNetwork(_network)
-        //     //.WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(5672))
-        //     .Build();
         
-        // _ordersFunctionContainer = new ImageFromDockerfileBuilder()
-        //     .WithDockerfileDirectory(CommonDirectoryPath.GetSolutionDirectory(), "src/ExternalFunctions")
-        //     .WithDockerfile("Dockerfile")
-        //     .Build();
-        // await _ordersFunctionContainer.CreateAsync().ConfigureAwait(false);
-        //
+        // Configure Azurite container for Azure Storage
+        //https://mcr.microsoft.com/en-us/artifact/mar/azure-storage/azurite/tags
+        _azuriteContainer = new AzuriteBuilder()
+            .WithImage("mcr.microsoft.com/azure-storage/azurite:3.33.0") //3.33.0 is from 10/25/2024
+            .WithName("azforders_azurite")
+            .WithPortBinding(11000, AzuriteBuilder.BlobPort)
+            .WithPortBinding(11001, AzuriteBuilder.QueuePort)
+            .WithPortBinding(11002, AzuriteBuilder.TablePort)
+            .WithNetwork(_network)
+            .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(AzuriteBuilder.BlobPort))
+            .Build();
+        
+        _msSqlContainer = new MsSqlBuilder()
+            .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
+            .WithName("azforders_mssql")
+            .WithPortBinding(1433, 1433)
+            .WithNetwork(_network)
+            .WithNetworkAliases(ServiceBusBuilder.DatabaseNetworkAlias)
+            .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(1433))
+            .Build();
+        
+        // For Service Bus, you might use a container if available or a mocked service
+        //https://mcr.microsoft.com/en-us/artifact/mar/azure-messaging/servicebus-emulator/tags
+        //https://java.testcontainers.org/modules/azure/#azure-service-bus-emulator
+        _serviceBusContainer = new ServiceBusBuilder()
+            .DependsOn(_msSqlContainer)
+            .WithImage("mcr.microsoft.com/azure-messaging/servicebus-emulator:1.0.1") //1.0.1 is from 11/18/2024
+            .WithName("azforders_servicebus")
+            .WithAcceptLicenseAgreement(true)
+            //.withConfig(MountableFile.forClasspathResource("/service-bus-config.json"))
+            .WithMsSqlContainer(_network, _msSqlContainer, ServiceBusBuilder.DatabaseNetworkAlias)
+            .WithPortBinding(5672, 5672)
+            // .WithNetwork(_network) // throws error as it already finds another instance of that network (probably from mssql container)
+            // .WithNetworkAliases(ServiceBusBuilder.ServiceBusNetworkAlias)
+            // .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(5672))
+            .Build();
+        
         _ordersFunctionContainer = new ContainerBuilder()
             .WithImage("az-func-with-sb-external")
+            .WithName("azforders_externalfunction")
             .WithNetwork(_network)
-            .WithPortBinding(8080, 80)
+            .WithNetworkAliases("azforders_externalfunction_network")
+            .WithPortBinding(ExternalFunctionPort, 80)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(80))
             .Build();
-        
+
         // var loggerMock = NSubstitute.Substitute.For<ILogger<QueueOrderFunction>>();
         // Environment.SetEnvironmentVariable("FUNCTIONS_WORKER_ID", Guid.NewGuid().ToString());
         // Environment.SetEnvironmentVariable("FUNCTIONS_WORKER_PORT", "7208");   // some free port
@@ -137,69 +143,76 @@ public class IntegrationTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        // await _network.CreateAsync();
-        // await _azuriteContainer.StartAsync();
-        // await _msSqlContainer.StartAsync();
-        // await _serviceBusContainer.StartAsync();
+        await _network.CreateAsync();
+        await _azuriteContainer.StartAsync();
+        await _msSqlContainer.StartAsync();
+        await _serviceBusContainer.StartAsync();
         
-        // Initialize any additional setup like creating the blob container or Service Bus queue.
-        // await _functionsHost.StartAsync();
         await _ordersFunctionContainer.StartAsync();
     }
 
     public async Task DisposeAsync()
     {
         await _ordersFunctionContainer.DisposeAsync();
-        // await _functionsHost.StopAsync();
-        // _functionsHost.Dispose();
-        //
-        // await _azuriteContainer.StopAsync();
-        // await _serviceBusContainer.StopAsync();
-        // await _network.DeleteAsync();
+        
+        await _azuriteContainer.StopAsync();
+        await _serviceBusContainer.StopAsync();
+        await _msSqlContainer.StopAsync();
+        await _network.DeleteAsync();
     }
 
     [Fact]
-    public async Task HttpGetRequest_GivenHealthCheckEndpoint_FunctionReturnsOk()
+    public async Task HealthCheckRequest_WhenRequested_FunctionReturnsOk()
     {
         // Arrange
         using var httpClient = new HttpClient();
-        var function1Url = "http://localhost:8080/api/HealthCheck";
+        var functionUrl = $"{ExternalFunctionUrl}/HealthCheck";
 
         // Act
-        var response = await httpClient.GetAsync(function1Url);
+        HttpResponseMessage response = await httpClient.GetAsync(functionUrl);
         
         // Assert
         response.IsSuccessStatusCode.Should().BeTrue();
     }
     
     [Fact]
-    public async Task FullFlowIntegrationTest()
+    public async Task SendOrderRequest_GivenNewOrder_FunctionIngestsOrder()
     {
         // Arrange
         using var httpClient = new HttpClient();
-        var function1Url = "http://localhost:8080/api/HealthCheck";
-        var serviceBusConnectionString = "Endpoint=sb://localhost:5672/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=your_key_here";
-        var queueName = "myqueue";
+        var functionUrl = $"{ExternalFunctionUrl}/SendOrder";
+        var orderDto = new DocumentDto
+        {
+            Id = Guid.NewGuid(),
+            Timestamp = DateTime.Now,
+            OrderedItemCount = 123
+        };
+        string body = JsonSerializer.Serialize(orderDto);
+        var content = new StringContent(body, Encoding.UTF8, "application/json");
 
         // Act
-        var response = await httpClient.GetAsync(function1Url);
+        HttpResponseMessage response = await httpClient.PostAsync(functionUrl, content);
         response.EnsureSuccessStatusCode();
-
-        // Wait for the message to be processed
-        await Task.Delay(5000);
-
-        // Assert
+        
+        var serviceBusConnectionString = "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;";
         await using var client = new ServiceBusClient(serviceBusConnectionString);
-        var receiver = client.CreateReceiver(queueName);
-        var message = await receiver.PeekMessageAsync();
-        //var message = await receiver.ReceiveMessageAsync(TimeSpan.FromSeconds(10)); //PeekMessageAsync?
+        var receiver = client.CreateReceiver("queue.1");
+        //var message = await receiver.PeekMessageAsync();
+        var messages = await receiver.PeekMessagesAsync(100);
 
-        Assert.NotNull(message);
-        Assert.Equal("ExpectedMessageContent", message.Body.ToString());
-
-        // Clean up
-        // await receiver.CompleteMessageAsync(message);
-        // await receiver.CloseAsync();
-        //await client.DisposeAsync();
+        var cs = _azuriteContainer.GetConnectionString();
+        var blobServiceClient = new BlobServiceClient(cs);
+        var containerClient = blobServiceClient.GetBlobContainerClient(Constants.InputBlobContainerName);
+        var blobClient = containerClient.GetBlobClient(orderDto.ToInputBlobName());
+        var blobExists = await blobClient.ExistsAsync();
+        // await foreach (BlobItem blobItem in containerClient.GetBlobsAsync())
+        // {
+        //     Console.WriteLine(blobItem.Name);
+        // }
+        
+        // Assert
+        response.IsSuccessStatusCode.Should().BeTrue();
+        messages.Any(m => m.Body.ToString().Contains(orderDto.Id.ToString())).Should().BeTrue();
+        blobExists.Value.Should().BeTrue();
     }
 }
