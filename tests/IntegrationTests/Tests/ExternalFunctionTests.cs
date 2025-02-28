@@ -8,6 +8,7 @@ using FluentAssertions;
 
 namespace IntegrationTests;
 
+[Collection(Constants.CollectionDefinitionName)]
 public class ExternalFunctionTests : IClassFixture<TestFixture>
 {
     private readonly TestFixture _fixture;
@@ -35,6 +36,7 @@ public class ExternalFunctionTests : IClassFixture<TestFixture>
     public async Task SendOrderRequest_GivenNewOrder_FunctionIngestsOrder()
     {
         // Arrange
+        await _fixture.WarehouseFunctionContainer.StopAsync(); // Stops the function to prevent it from processing the order
         using var httpClient = new HttpClient();
         var functionUrl = $"{_fixture.ExternalFunctionUrl}/SendOrder";
         var orderDto = new DocumentDto
@@ -50,15 +52,12 @@ public class ExternalFunctionTests : IClassFixture<TestFixture>
         HttpResponseMessage response = await httpClient.PostAsync(functionUrl, content);
         response.EnsureSuccessStatusCode();
 
-
         // Assert
         response.IsSuccessStatusCode.Should().BeTrue();
+        (await BlobExistsAsync(orderDto.ToInputBlobName())).Should().BeTrue();
         
         IReadOnlyList<ServiceBusReceivedMessage> messages = await PeekMessagesAsync();
-        messages.Any(m => m.Body.ToString().Contains(orderDto.Id.ToString())).Should().BeTrue();
-        
-        bool blobExists = await BlobExistsAsync(orderDto.ToInputBlobName());
-        blobExists.Should().BeTrue();
+        messages.Any(m => m.Body.ToString().Contains(orderDto.Id.ToString())).Should().BeTrue();        
     }
 
     private async Task<bool> BlobExistsAsync(string blobName)
