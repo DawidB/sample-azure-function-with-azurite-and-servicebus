@@ -4,7 +4,7 @@ obj/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
-*.sln.DotSettings.user
+*.user
 
 # Default ignored files
 /shelf/
