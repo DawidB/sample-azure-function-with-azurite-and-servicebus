@@ -38,7 +38,8 @@ public class DocumentDtoTests
             Id = new Guid("0b474478-76de-40fd-a274-584a59736f34"),
             Status = "new",
             DocumentType = "order",
-            OrderedItemCount = 244
+            OrderedItemCount = 244,
+            Timestamp = new DateTime(2025, 2, 27, 10, 41, 48, 962, DateTimeKind.Utc)
         };
         
         // Act
